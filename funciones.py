@@ -1,5 +1,12 @@
 import re
+import pandas as pd
+from fuzzywuzzy import process
 
+#funcion seleccion columnas:
+def seleccion_columnas(df):
+    df=df[['date', 'type', 'country', 'state', 'location', 'name', 'sex', 'age', 'injury']]
+    return df
+#Funcion para limpiar fecha
 def limpiar_fecha(fecha_str):
     """Función para estandarizar fechas usando regex"""
     
@@ -76,36 +83,129 @@ def limpiar_fecha(fecha_str):
     
     return fecha_str
 
-from fuzzywuzzy import process
-import pandas as pd
-
-# Lista de lesiones (ejemplo)
-lesiones = [
-    "Right leg severed below knee",
-    "30cm (1ft) bite to lower calf",
-    "Bite to left arm",
-    "Head right arm and leg severed",
-    "Minor injury to left foot",
-    "FATAL",
-    "Injury to lower left leg",
-    "Bite to lower back",
-    "Leg bitten",
-    "Sharks bit their inflatable boats"
-]
-
 
 
 # Función para asignar una lesión a la categoría "Fatal" o "No Fatal"
+
+palabras_fatal = ['fatal', 'death', 'fatality', 'drowned']
 def categorizar_lesion(lesion, palabras_fatal):
+    if pd.isna(lesion):
+        return "Desconocido"
+    else:
     # Comprobar si alguna de las palabras clave está en la lesión usando fuzzywuzzy
-    max_score = 0
-    for palabra in palabras_fatal:
-        score = process.extractOne(palabra, [lesion])[1]  # Obtenemos el score de fuzzywuzzy
-        if score > max_score:
-            max_score = score
-            if max_score > 80:  # Establecemos un umbral de coincidencia
-                return "Fatal"
+        max_score = 0
+        for palabra in palabras_fatal:
+            score = process.extractOne(palabra, [lesion])[1]  # Obtenemos el score de fuzzywuzzy
+            if score > max_score:
+                max_score = score
+                if max_score > 80:  # Establecemos un umbral de coincidencia
+                    return "Fatal"
     
     # Si no se encuentra una coincidencia suficientemente buena, la clasificamos como "No Fatal"
     return "No Fatal"
+
+# Función para renombrar columnas
+def renombrar_columnas(df):
+    df = df.rename(columns={df.columns[n]: df.columns[n].strip().replace(" ", "_").lower() for n in range(len(df.columns))})
+    return df
+
+#Funcion cambiar tipo a fecha
+def cambiar_tipo_fecha(df):
+    df['date']= pd.to_datetime(df['date'], errors='coerce')
+    return df
+
+# Función para filtrar fechas mayores a '1970-01-01'
+def filtrar_fecha(df):
+    df = df.loc[df['date'] > '1970-01-01']
+    return df
+
+# Función para eliminar filas con valores nulos en todas las columnas
+def eliminar_na(df):
+    df = df.dropna(how="all")
+    return df
+
+# Función para resetear el índice
+def resetear_indice(df):
+    df = df.reset_index(drop=True)
+    return df
+
+# Función para convertir columna 'age' a numérico
+def convertir_edad(df):
+    df["age"] = pd.to_numeric(df['age'], errors="coerce")
+    return df
+
+# Función para capitalizar los valores de la columna 'country'
+def capitalizar_country(df):
+    df["country"] = df["country"].str.capitalize()
+    return df
+
+# Función para rellenar valores nulos de las columnas con valores específicos
+def rellenar_nulos(df):
+    df["name"] = df["name"].fillna("Unknown")
+    df["sex"] = df["sex"].fillna("Unknown")
+    df["state"] = df["state"].fillna("Unknown")
+    df["type"] = df["type"].fillna("Unknown")
+    df["location"] = df["location"].fillna("Unknown")
+    df["age"] = df["age"].fillna("Unknown")
+    return df
+
+# Función para corregir valores erróneos en la columna 'sex'
+def corregir_sex(df):
+    df["sex"] = df["sex"].replace("lli", "M")
+    df["sex"] = df["sex"].str.strip()
+    return df
+
+# Función para corregir valores en 'type'
+def corregir_type(df):
+    df["type"] = df["type"].str.strip()
+    df["type"] = df["type"].replace(["Questionable", "?", "Unconfirmed", "Unverified", "Under investigation"], "Invalid")
+    return df
+
+# Función para eliminar filas con nulos en una columna específica
+def eliminar_na_columna(df, columna):
+    df = df.dropna(subset=[columna])
+    return df
+
+# Función para rellenar nulos en la columna 'date' usando backward fill (bfill)
+def rellenar_fecha(df):
+    df['date'] = df['date'].fillna(method='bfill')
+    return df
+
+# Función para extraer mes y año de la columna 'date'
+def extraer_mes_year(df):
+    df['month'] = df['date'].dt.month
+    df['year'] = df['date'].dt.year
+    return df
+
+# Función para eliminar columnas específicas
+#def eliminar_columnas(df, columnas):
+    df = df.drop(columnas, axis=1)
+    return df
+
+# Ahora aplicamos todas las funciones sobre el DataFrame df
+
+def limpiar_dataframe(df):
+    df = renombrar_columnas(df)
+    df= seleccion_columnas(df)
+    df["date"] = df["date"].apply(limpiar_fecha)
+    df= cambiar_tipo_fecha(df)
+    
+    # Categorizar lesiones usando 'categorizar_lesion' y la lista 'palabras_fatal'
+    df["category"] = df["injury"].apply(lambda x: categorizar_lesion(x, palabras_fatal))
+    df = filtrar_fecha(df)
+    df = eliminar_na(df)
+    df = resetear_indice(df)  # Si quieres resetear el índice y eliminar la columna 'index'
+    
+    # Eliminar la columna 'injury'
+    df = df.drop('injury', axis=1)
+    df = convertir_edad(df)
+    df = capitalizar_country(df)
+    df = rellenar_nulos(df)
+    df = corregir_sex(df)
+    df = corregir_type(df)
+    df = eliminar_na_columna(df, 'country')
+    df = rellenar_fecha(df)
+    df = extraer_mes_year(df)
+  
+    return df
 
