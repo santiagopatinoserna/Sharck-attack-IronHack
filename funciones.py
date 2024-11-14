@@ -6,7 +6,8 @@ from fuzzywuzzy import process
 def seleccion_columnas(df):
     df=df[['date', 'type', 'country', 'state', 'location', 'name', 'sex', 'age', 'injury']]
     return df
-#Funcion para limpiar fecha
+
+# Funcion para limpiar fecha
 def limpiar_fecha(fecha_str):
     """Función para estandarizar fechas usando regex"""
     
@@ -39,7 +40,7 @@ def limpiar_fecha(fecha_str):
     # Reemplazar varios separadores por -
     fecha_str = re.sub(r'[./\s]', '-', fecha_str)
 
-    #Remover "reported" si existe
+    # Remover "reported" si existe
     fecha_str = re.sub(r'^\s*reported[\s\-]*|[\s\-]*reported\s*$', '', fecha_str, flags=re.IGNORECASE)
     
     # Extraer componentes usando diferentes patrones
@@ -83,10 +84,7 @@ def limpiar_fecha(fecha_str):
     
     return fecha_str
 
-
-
 # Función para asignar una lesión a la categoría "Fatal" o "No Fatal"
-
 palabras_fatal = ['fatal', 'death', 'fatality', 'drowned']
 def categorizar_lesion(lesion, palabras_fatal):
     if pd.isna(lesion):
@@ -109,14 +107,14 @@ def renombrar_columnas(df):
     df = df.rename(columns={df.columns[n]: df.columns[n].strip().replace(" ", "_").lower() for n in range(len(df.columns))})
     return df
 
-#Funcion cambiar tipo a fecha
+# Función cambiar tipo a fecha
 def cambiar_tipo_fecha(df):
-    df['date']= pd.to_datetime(df['date'], errors='coerce')
+    df['date'] = pd.to_datetime(df['date'], errors='coerce')
     return df
 
-# Función para filtrar fechas mayores a '1970-01-01'
+# Función para filtrar fechas mayores a '1970-01-01' y eliminar el año 2024
 def filtrar_fecha(df):
-    df = df.loc[df['date'] > '1970-01-01']
+    df = df.loc[(df['date'] > '1970-01-01') & (df['date'].dt.year < 2024)]
     return df
 
 # Función para eliminar filas con valores nulos en todas las columnas
@@ -168,7 +166,7 @@ def eliminar_na_columna(df, columna):
 
 # Función para rellenar nulos en la columna 'date' usando backward fill (bfill)
 def rellenar_fecha(df):
-    df['date'] = df['date'].fillna(method='bfill')
+    df['date'] = df['date'].bfill()
     return df
 
 # Función para extraer mes y año de la columna 'date'
@@ -178,17 +176,16 @@ def extraer_mes_year(df):
     return df
 
 # Función para eliminar columnas específicas
-#def eliminar_columnas(df, columnas):
+def eliminar_columnas(df, columnas):
     df = df.drop(columnas, axis=1)
     return df
 
 # Ahora aplicamos todas las funciones sobre el DataFrame df
-
 def limpiar_dataframe(df):
     df = renombrar_columnas(df)
-    df= seleccion_columnas(df)
+    df = seleccion_columnas(df)
     df["date"] = df["date"].apply(limpiar_fecha)
-    df= cambiar_tipo_fecha(df)
+    df = cambiar_tipo_fecha(df)
     
     # Categorizar lesiones usando 'categorizar_lesion' y la lista 'palabras_fatal'
     df["category"] = df["injury"].apply(lambda x: categorizar_lesion(x, palabras_fatal))
@@ -209,3 +206,85 @@ def limpiar_dataframe(df):
   
     return df
 
+
+def plot_attacks_by_month(df):
+    import pandas as pd
+    import seaborn as sns
+    import matplotlib.pyplot as plt
+    
+    # Definir la lista de países dentro de la función
+    countries = ['Usa', 'South africa', 'Australia']
+    
+    # Filtrar los datos por los países especificados en la lista 'countries'
+    country_df = df[df['country'].isin(countries)]
+    
+    # Agrupar por mes y contar los ataques
+    attacks_by_month = country_df.groupby(['month', 'country']).size().reset_index(name='attacks')
+    
+    # Asegurarnos de que todos los meses estén presentes en el gráfico (del 1 al 12)
+    all_months = pd.DataFrame({'month': range(1, 13)})  # Creando un DataFrame con los meses del 1 al 12
+    attacks_by_month = pd.merge(all_months, attacks_by_month, on='month', how='left')
+    
+    # Crear gráfico combinado con Seaborn
+    plt.figure(figsize=(14, 7))  # Aumentar aún más el tamaño del gráfico
+    sns.barplot(x='month', y='attacks', data=attacks_by_month, palette='viridis', hue='country')
+
+    # Personalizar gráfico combinado
+    plt.title(f'Ataques de Tiburones por Mes en los Países Seleccionados', fontsize=16)
+    plt.xlabel('Mes')
+    plt.ylabel('Cantidad de Ataques')
+    plt.xticks(range(0, 12), ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'])  # Meses
+    
+    # Ajustar la leyenda y evitar el warning
+    plt.legend(title="País", loc='upper right', bbox_to_anchor=(1.05, 1))  # Mejor ubicación para la leyenda
+    plt.tight_layout()  # Para evitar que la leyenda se corte
+    
+    # Mostrar gráfico combinado
+    plt.show()
+
+    # Crear gráficos individuales para cada país
+    for country in countries:
+        # Filtrar los datos para el país actual
+        country_data = attacks_by_month[attacks_by_month['country'] == country]
+
+        # Crear gráfico individual para el país
+        plt.figure(figsize=(14, 7))
+        sns.barplot(x='month', y='attacks', data=country_data, palette='viridis', hue="month")
+
+        # Personalizar gráfico individual
+        plt.title(f'Ataques de Tiburones por Mes en {country}', fontsize=16)
+        plt.xlabel('Mes')
+        plt.ylabel('Cantidad de Ataques')
+        plt.xticks(range(0, 12), ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'])  # Meses
+
+        # Mostrar gráfico individual
+        plt.show()
+
+
+
+
+
+def plot_attacks_by_category(df):
+    import matplotlib.pyplot as plt
+    attacks_by_category = df['category'].value_counts()
+    attacks_by_category.plot(kind='bar', title='Distribución de Ataques por Categoría', xlabel='Categoría', ylabel='Cantidad de Ataques')
+    plt.show()
+
+def plot_attacks_by_type(df):
+    import matplotlib.pyplot as plt
+    attacks_by_type = df['type'].value_counts()
+    attacks_by_type.plot(kind='bar', title='Distribución de Ataques por Tipo', xlabel='Tipo de Ataque', ylabel='Cantidad de Ataques')
+    plt.show()
+
+
+def plot_attacks_by_location(df):
+    import matplotlib.pyplot as plt
+    attacks_by_location = df['country'].value_counts().head(10)
+    attacks_by_location.plot(kind='bar', title='Top 10 Ubicaciones de Ataques', xlabel='País', ylabel='Cantidad de Ataques')
+    plt.show()
+
+def creacion_de_graficos(df):
+    plot_attacks_by_month(df)
+    plot_attacks_by_category(df)
+    plot_attacks_by_type(df)
+    plot_attacks_by_location(df)
