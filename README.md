@@ -60,9 +60,8 @@ Basándonos en el análisis, recomendamos a la empresa de seguros:
 
 ## Enlaces
 
-- [Dataset utilizado](Link al Dataset)
-- [Documentación del proyecto](Link a la documentación)
-- [Presentación del proyecto](Link a la presentación)
+- [Dataset utilizado](https://www.sharkattackfile.net/spreadsheets/GSAF5.xls)
+
 
 ## Participantes
 
