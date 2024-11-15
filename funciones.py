@@ -262,8 +262,6 @@ def plot_attacks_by_month(df):
 
 
 
-
-
 def plot_attacks_by_category(df):
     import matplotlib.pyplot as plt
     attacks_by_category = df['category'].value_counts()
