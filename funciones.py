@@ -281,8 +281,19 @@ def plot_attacks_by_location(df):
     attacks_by_location.plot(kind='bar', title='Top 10 Ubicaciones de Ataques', xlabel='País', ylabel='Cantidad de Ataques')
     plt.show()
 
+def plot_attacks_by_country_pie(df):
+    import matplotlib.pyplot as plt
+    # Contar la cantidad de ataques por país, limitando a los 3 primeros
+    attacks_by_country = df['country'].value_counts().nlargest(3)
+    plt.figure(figsize=(8, 6))
+    attacks_by_country.plot.pie(autopct='%1.1f%%', startangle=140)
+    plt.title('Distribución de Ataques por País (Top 3)')
+    plt.ylabel('')  # Oculta la etiqueta del eje y para que se vea más limpio
+    plt.show()
+
 def creacion_de_graficos(df):
     plot_attacks_by_month(df)
     plot_attacks_by_category(df)
     plot_attacks_by_type(df)
+    plot_attacks_by_country_pie(df)
     plot_attacks_by_location(df)
